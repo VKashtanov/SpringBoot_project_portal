@@ -39,3 +39,6 @@ target
 HELP.md
 mvnw
 mvnw.cmd
+keystore.p12
+localhost-key.pem
+localhost.pem
