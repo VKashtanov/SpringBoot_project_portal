@@ -29,7 +29,8 @@ public class ValidationService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.add("Cookie", "JSESSIONID=" + jsessionId);
-            headers.add("Origin", "http://localhost:8080"); // ← REQUIRED to avoid 403
+
+            headers.add("Origin", "http://localhost:8080");
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
