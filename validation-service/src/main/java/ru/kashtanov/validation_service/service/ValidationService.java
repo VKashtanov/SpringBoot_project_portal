@@ -3,12 +3,15 @@ package ru.kashtanov.validation_service.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import ru.kashtanov.validation_service.util.EnvConfig;
+
+import java.util.Map;
 
 
 @Service
@@ -16,6 +19,8 @@ public class ValidationService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    private static final String CLIENT_ID = EnvConfig.get("CLIENT_ID");
+    private static final String CLIENT_SECRET = EnvConfig.get("DATABASE_URL");
 
 
     public ValidationService(RestTemplate restTemplate, ObjectMapper objectMapper1) {
@@ -23,31 +28,42 @@ public class ValidationService {
         this.objectMapper = objectMapper1;
     }
 
-    public boolean validateSessionBelongsToUser(String jsessionId, long expectedUserId) {
+    public boolean validateSessionBelongsToUser(String token, long expectedUserId) {
         try {
-            String url = "http://localhost:8080/o/headless-admin-user/v1.0/my-user-account";
-
+            String accessToken = getAccessToken();
             HttpHeaders headers = new HttpHeaders();
-            headers.add("Cookie", "JSESSIONID=" + jsessionId);
-
-            headers.add("Origin", "http://localhost:8080");
-
+            headers.setBearerAuth("Bearer "+ accessToken);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                return false;
-            }
-
-            JsonNode userNode = objectMapper.readTree(response.getBody());
-            long actualUserId = userNode.get("id").asLong();
-
-            return actualUserId == expectedUserId; // ← Secure: session user must match requested user
-
+            restTemplate.exchange(
+                    "http://localhost:8080/o/headless-admin-user/v1.0/user-accounts/" + expectedUserId,
+                    HttpMethod.GET,
+                    entity,
+                    String.class
+            );
+            return true;
+        } catch (HttpClientErrorException e) {
+            return false; // User not found
         } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+            return false; // Network error etc.
         }
+
+    }
+
+    private String getAccessToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth(CLIENT_ID, CLIENT_SECRET);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "client_credentials");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                "http://localhost:8080/o/oauth2/token",
+                request,
+                Map.class
+        );
+        return (String) response.getBody().get("access_token");
     }
 }

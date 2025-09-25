@@ -33,6 +33,7 @@ build/
 .vscode/
 
 ### CUSTOM ###
+.env
 .mvn
 .gitattributes
 target

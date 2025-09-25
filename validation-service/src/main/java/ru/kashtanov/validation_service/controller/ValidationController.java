@@ -1,10 +1,15 @@
 package ru.kashtanov.validation_service.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ru.kashtanov.validation_service.dto.UserRequest;
+import ru.kashtanov.validation_service.dto.ValidationResponseDto;
 import ru.kashtanov.validation_service.service.ValidationService;
+import ru.kashtanov.validation_service.util.EnvConfig;
+
 
 @RestController
 @RequestMapping("api/v1/validator")
@@ -17,14 +22,21 @@ public class ValidationController {
 
 
     @PostMapping("/validate-session")
-    public void validateUser(@RequestBody UserRequest userRequest, HttpServletRequest request) {
-        boolean isValid = validationService.validateSessionBelongsToUser(request.getSession().getId(), Long.parseLong(userRequest.getUserId()));
-        System.out.println();
-        System.out.println("Validated session: " + isValid);
-        System.out.println();
-        System.out.println("userId: " + userRequest.getUserId());
-        System.out.println();
-        System.out.println(request.getSession().getId());
+    public ResponseEntity<ValidationResponseDto> validateUser(@RequestBody UserRequest userRequest, HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        String jwt = "";
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7).trim();
+        }
+        boolean isValid = validationService.validateSessionBelongsToUser(jwt, Long.parseLong(userRequest.getUserId()));
+
+        if (isValid) {
+            System.out.println("Validated session");
+            return ResponseEntity.ok(new ValidationResponseDto(true,userRequest.getUserId() + " is valid"));
+        }
+        System.out.println("Not validated session");
+        return  ResponseEntity.status(HttpStatus.FORBIDDEN).
+                body(new ValidationResponseDto(false,userRequest.getUserId() + " is not valid"));
 
     }
 

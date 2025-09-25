@@ -14,13 +14,12 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/v1/**")
-                        .allowedMethods("GET", "POST")
+                        .allowedOrigins("http://localhost:8080") //
+                        .allowedMethods("GET", "POST","OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(true)// since I need to process cookie
-                        .allowedOrigins("http://localhost:8080");
+                        .allowCredentials(true);// since I need to process cookie
+
             }
-
-
         };
     }
 }
